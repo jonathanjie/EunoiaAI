@@ -1,0 +1,49 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{% static 'styles.css' %}" />
+    <script src="{% static 'scripts.js' %}" defer></script>
+    <title>Chatbot</title>
+</head>
+  <body>
+    <div id="upload-wrapper">
+        <div class="logo-container">
+            <img src="https://cdn.discordapp.com/attachments/807707281961123883/1095056498058600519/logo_navy.png" alt="Logo" class="logo" />
+        </div>
+        <div id="pinecone-details">
+            <form id="upload-form" onsubmit="submitForm(event)">
+                <label for="file_type">File type:</label>
+                <select id="file_type" name="file_type" onchange="updateInputFields()">
+                    <option value="notion">Notion Export</option>
+                    <option value="csv">CSV</option>
+                    <!--<option value="javascript_website">Javascript Websites</option>-->
+                    <option value="html_website">HTML-only Websites</option>
+                    <option value="pdf">PDF</option>
+                </select>
+                <br>
+                <div id="file-input-wrapper">
+                    <label for="file">Upload your file:</label>
+                    <input type="file" id="file" name="file">
+                </div>
+                <br>
+                <label for="pinecone_api_key">Pinecone API Key:</label>
+                <input type="text" id="pinecone_api_key" name="pinecone_api_key">
+                <br>
+                <label for="pinecone_env">Pinecone Environment:</label>
+                <input type="text" id="pinecone_env" name="pinecone_env">
+                <br>
+                <label for="pinecone_index_name">Pinecone Index Name:</label>
+                <input type="text" id="pinecone_index_name" name="pinecone_index_name">
+                <br>
+                <input type="submit" value="Upload">
+                <div id="uploading-spinner" class="spinner hidden"></div>
+            </form>
+            <div id="message" class="message"></div>
+        </div>
+        <a href="/">Back to chat</a>
+    </div>
+  </body>
+</html>
