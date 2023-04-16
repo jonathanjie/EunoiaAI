@@ -52,7 +52,7 @@ sendBtn.addEventListener("click", async () => {
   const pineconeIndexName = document.getElementById("pinecone_index_name").value;
 
   try {
-    const response = await fetch("http://194.233.91.95:5000/chat", {
+    const response = await fetch("http://194.233.91.95:8000/chat/", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -140,8 +140,7 @@ function updateInputFields() {
 }
 
 function submitForm(event) {
-    event.preventDefault();
-
+    event.preventDefault(); // Prevent default form submission
     const form = document.getElementById('upload-form');
     const formData = new FormData(form);
     const messageDiv = document.getElementById('message');
@@ -150,7 +149,7 @@ function submitForm(event) {
     // Show the spinner
     spinnerElement.classList.remove('hidden');
 
-    fetch('/upload', {
+    fetch(form.action, { // Use the form.action instead of the hardcoded URL
         method: 'POST',
         body: formData,
     })
@@ -177,4 +176,3 @@ function submitForm(event) {
             spinnerElement.classList.add('hidden');
         });
 }
-

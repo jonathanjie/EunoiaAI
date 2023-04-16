@@ -14,7 +14,7 @@
             <img src="https://cdn.discordapp.com/attachments/807707281961123883/1095056498058600519/logo_navy.png" alt="Logo" class="logo" />
         </div>
         <div id="pinecone-details">
-            <form id="upload-form" onsubmit="submitForm(event)">
+            <form id="upload-form" action="/upload/" method="POST" enctype="multipart/form-data" onsubmit="submitForm(event)">
                 <label for="file_type">File type:</label>
                 <select id="file_type" name="file_type" onchange="updateInputFields()">
                     <option value="notion">Notion Export</option>

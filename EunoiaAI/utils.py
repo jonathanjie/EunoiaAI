@@ -46,7 +46,7 @@ def restore_convo_from_redis(request, memory, session_id):
         None
     """
     # Uses 'bot_{session_id}' as key to check if session exists
-    session_data_tuple = session.get('bot_{}'.format(session_id))
+    session_data_tuple = request.session.get('bot_{}'.format(session_id))
 
     # if not session_data_tuple:
     # If session doesn't exist:
