@@ -1,38 +1,16 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="{% static 'styles.css' %}" />
-    <script src="{% static 'scripts.js' %}" defer></script>
-    <title>Chatbot</title>
-</head>
-<body>
-    <div class="logo-container">
-        <img src="https://cdn.discordapp.com/attachments/807707281961123883/1095056498058600519/logo_navy.png" alt="Logo" class="logo" />
-    </div>
-    <div id="pinecone-details">
-        <form>
-            <label for="pinecone_api_key">Pinecone API Key:</label>
-            <input type="text" id="pinecone_api_key" name="pinecone_api_key">
-            <br>
-            <label for="pinecone_env">Pinecone Environment:</label>
-            <input type="text" id="pinecone_env" name="pinecone_env">
-            <br>
-            <label for="pinecone_index_name">Pinecone Index Name:</label>
-            <input type="text" id="pinecone_index_name" name="pinecone_index_name">
-        </form>
-    </div>
-    <div class="chat-container">
-        <div class="messages" id="messages"></div>
-        <div id="typing" class="typing hidden">Mari-Chan is typing...</div>
-        <div class="input-container">
-            <input type="text" id="user-input" class="chat-input" placeholder="Type your message...">
-            <button id="send-btn">Send</button>
-        </div>
-    </div>
-    <a href="/upload-page">Upload Knowledge Base</a>
-</body>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Auth0 Example</title>
+  </head>
+  <body>
+    {% if session %}
+    <h1>Welcome {{session.userinfo.name}}!</h1>
+    <p><a href="{% url 'logout' %}">Logout</a></p>
+    <div><pre>{{pretty}}</pre></div>
+    {% else %}
+    <h1>Welcome Guest</h1>
+    <p><a href="{% url 'login' %}">Login</a></p>
+    {% endif %}
+  </body>
 </html>
-

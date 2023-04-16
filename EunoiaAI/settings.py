@@ -13,15 +13,20 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 from pathlib import Path
 import os
 
+from dotenv import load_dotenv, find_dotenv
+
+# Load the .env file
+load_dotenv()
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
+TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-l(fuvfo3t0@v@p93v9b0(w3ptv%gr40lqiqqtjr0=yao4kh*35'
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -38,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'EunoiaAI',
 ]
 
 MIDDLEWARE = [
@@ -55,7 +61,7 @@ ROOT_URLCONF = 'EunoiaAI.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [TEMPLATE_DIR],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -70,18 +76,6 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'EunoiaAI.wsgi.application'
-
-
-# Database
-# https://docs.djangoproject.com/en/4.2/ref/settings/#databases
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
-
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -124,15 +118,13 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-OPENAI_API_KEY = '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'
-PINECONE_API_KEY = '059d7f02-0a2b-426d-bd4d-dac65525637d'
-PINECONE_API_ENV = 'us-east4-gcp'
-PROMPTLAYER_API_KEY = "pl_65789e83a84f33764c0c4eea6e6a45af"
-FLASK_SECRET_KEY = 'your_secret_key'  # Replace with a strong secret key
-REDIS_URL = 'redis://default:27f8748df6c541b89052c1cb36ba59be@apn1-handy-snake-33255.upstash.io:33255'
-EXTERNAL_HOSTNAME = "cs-chatbot-db.fly.dev"
-DATABASE_URL = f"postgresql://postgres:G5JJxYi6DWU2oyr@{EXTERNAL_HOSTNAME}:5432"
-UPLOAD_FOLDER = 'uploads'
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+PINECONE_API_KEY = os.getenv('PINECONE_API_KEY')
+PINECONE_API_ENV = os.getenv('PINECONE_API_ENV')
+PROMPTLAYER_API_KEY = os.getenv('PROMPTLAYER_API_KEY')
+REDIS_URL = os.getenv('REDIS_URL')
+UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER')
 
 # Configure session management using Redis
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
@@ -148,3 +140,26 @@ CACHES = {
         }
     }
 }
+
+if os.getenv('DJANGO_ENV') == 'development':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('DEV_DB_NAME'),
+            'USER': os.getenv('DEV_DB_USER'),
+            'PASSWORD': os.getenv('DEV_DB_PASSWORD'),
+            'HOST': os.getenv('DEV_DB_HOST'),
+            'PORT': os.getenv('DEV_DB_PORT'),
+        }
+    }
+    
+# Load environment definition file
+ENV_FILE = find_dotenv()
+if ENV_FILE:
+    load_dotenv(ENV_FILE)
+
+
+# Load Auth0 application settings into memory
+AUTH0_DOMAIN = os.environ.get("AUTH0_DOMAIN")
+AUTH0_CLIENT_ID = os.environ.get("AUTH0_CLIENT_ID")
+AUTH0_CLIENT_SECRET = os.environ.get("AUTH0_CLIENT_SECRET")

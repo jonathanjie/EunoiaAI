@@ -9,9 +9,9 @@ from langchain.vectorstores import Pinecone
 from langchain.embeddings.openai import OpenAIEmbeddings
 from django.conf import settings
 
-# Set API Keys
-os.environ['OPENAI_API_KEY'] = settings.OPENAI_API_KEY
-os.environ["PROMPTLAYER_API_KEY"] = settings.PROMPTLAYER_API_KEY
+# # Set API Keys
+# os.environ['OPENAI_API_KEY'] = settings.OPENAI_API_KEY
+# os.environ["PROMPTLAYER_API_KEY"] = settings.PROMPTLAYER_API_KEY
 
 expiry_time = timedelta(seconds=86400)  # 24 hours
 
