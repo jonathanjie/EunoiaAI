@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h2>Dashboard</h2>
+
+    {% if is_owner %}
+        <h3>Users</h3>
+        <ul>
+        {% for user_profile in user_profiles %}
+            <li><a href="{% url 'manage_user' user_profile.user.id %}">{{ user_profile.user.username }}</a></li>
+        {% endfor %}
+        </ul>
+
+        <h3>Invite User</h3>
+        <form method="post" action="{% url 'invite_user' %}">
+            {% csrf_token %}
+            <input type="email" name="email" placeholder="Email" required>
+            <button type="submit">Invite</button>
+        </form>
+    {% endif %}
+
+    <h3>Agents</h3>
+    <ul>
+    {% for agent in agents %}
+        <li><a href="{% url 'update_agent' agent.id %}">{{ agent.name }}</a></li>
+    {% endfor %}
+    </ul>
+
+    <h3>Create New Agent</h3>
+    <a href="{% url 'create_agent' %}">Create New Agent</a>
+
+{% endblock %}

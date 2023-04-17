@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h2>{% if organization %}Manage{% else %}Create{% endif %} Organization</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">{% if organization %}Update{% else %}Create{% endif %} Organization</button>
+    </form>
+
+    {% if organization %}
+        <h3>Organization Details</h3>
+        <p>Name: {{ organization.name }}</p>
+        <p>Slug: {{ organization.slug }}</p>
+    {% endif %}
+{% endblock %}

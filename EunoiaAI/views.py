@@ -1,40 +1,58 @@
-from django.shortcuts import render
-from django.http import JsonResponse
+# Django imports
+from django.shortcuts import render, redirect, get_object_or_404
+from django.http import JsonResponse, HttpResponseRedirect
 from django.views.decorators.csrf import csrf_exempt
-import json
-
-from .config import expiry_time, docsearch, init_chat_and_memory
-from .utils import save_convo_to_redis, restore_convo_from_redis
-from .process_and_upload import process_and_upload
-from django.utils.text import get_valid_filename
-import os
-import tempfile
-import shutil
-
-from authlib.integrations.django_client import OAuth
-from django.conf import settings
-from django.shortcuts import redirect, render, redirect
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
+from django.contrib.auth import login as auth_login
+from django.contrib import messages
+from django.utils.text import get_valid_filename, slugify
 from django.urls import reverse
-from urllib.parse import quote_plus, urlencode
+from django.conf import settings
 
+# Third-party library imports
+import json
+import os
+import shutil
+import tempfile
+from urllib.parse import quote_plus, urlencode
+from authlib.integrations.django_client import OAuth
+import uuid
+
+# Local imports
+from .config import expiry_time, docsearch, init_chat_and_memory
+from .decorators import auth0_login_required
+from .forms import CreateOrganizationForm, CreateAgentForm
+from .models import Agent, UserProfile
+from .process_and_upload import process_and_upload
+from .utils import save_convo_to_redis, restore_convo_from_redis
+
+
+# Constants
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'pdf', 'csv', 'zip', 'html', 'txt'}
 
+# OAuth configuration
 oauth = OAuth()
 
 oauth.register(
     "auth0",
     client_id=settings.AUTH0_CLIENT_ID,
     client_secret=settings.AUTH0_CLIENT_SECRET,
+    access_token_url=f"https://{settings.AUTH0_DOMAIN}/oauth/token",
+    authorize_url=f"https://{settings.AUTH0_DOMAIN}/authorize",
+    api_base_url=f"https://{settings.AUTH0_DOMAIN}/",
     client_kwargs={
         "scope": "openid profile email",
     },
     server_metadata_url=f"https://{settings.AUTH0_DOMAIN}/.well-known/openid-configuration",
 )
 
+# Helper Functions
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+# Chat Views
 def chat_page(request):
     return render(request, 'chat-page.html')
 
@@ -116,6 +134,8 @@ def upload_file(request):
     else:
         return JsonResponse({'error': 'Invalid request method'}, status=405)
 
+# Auth0 Views
+
 def index(request):
     return render(
         request,
@@ -126,7 +146,26 @@ def index(request):
         },
     )
 
-### Auth0 ###
+@auth0_login_required
+def dashboard(request):
+    user_profile = get_object_or_404(UserProfile, user=request.user)
+    organization = user_profile.organization
+    is_owner = organization.owner == request.user
+
+    if is_owner:
+        user_profiles = UserProfile.objects.filter(organization=organization)
+    else:
+        user_profiles = None
+
+    agents = Agent.objects.filter(organization=organization)
+
+    context = {
+        'is_owner': is_owner,
+        'user_profiles': user_profiles,
+        'agents': agents
+    }
+    return render(request, 'dashboard.html', context)
+
 def login(request):
     return oauth.auth0.authorize_redirect(
         request, request.build_absolute_uri(reverse("callback"))
@@ -134,7 +173,17 @@ def login(request):
     
 def callback(request):
     token = oauth.auth0.authorize_access_token(request)
-    request.session["user"] = token
+    resp = oauth.auth0.get("userinfo", token=token)
+    user_info = resp.json()
+    request.session["user"] = user_info
+
+    user, created = User.objects.get_or_create(username=user_info["sub"])
+    if created:
+        user.email = user_info["email"]
+        user.save()
+
+    auth_login(request, user)
+
     return redirect(request.build_absolute_uri(reverse("index")))
     
 def logout(request):
@@ -150,3 +199,138 @@ def logout(request):
             quote_via=quote_plus,
         ),
     )
+
+# Organization and user management views
+@auth0_login_required
+def manage_organization(request):
+    user_profile = UserProfile.objects.filter(user_id=request.user.id).first()
+
+    if user_profile and user_profile.organization:
+        organization = user_profile.organization
+        form = CreateOrganizationForm(instance=organization)
+    else:
+        organization = None
+        form = CreateOrganizationForm()
+
+    if request.method == 'POST':
+        if organization:
+            form = CreateOrganizationForm(request.POST, instance=organization)
+        else:
+            form = CreateOrganizationForm(request.POST)
+
+        if form.is_valid():
+            organization = form.save(commit=False)
+
+            # Generate the unique slug
+            slug = slugify(organization.name) + '-' + str(uuid.uuid4())[:5]
+            organization.slug = slug
+
+            if not organization.owner:
+                organization.owner = request.user
+
+            organization.save()
+
+            if not user_profile:
+                user_profile = UserProfile(user=request.user, organization=organization)
+                user_profile.save()
+
+            return redirect('dashboard')  # Replace 'dashboard' with the name of the view you want to redirect the user to
+
+    context = {'form': form, 'organization': organization}
+    return render(request, 'manage-organization.html', context)
+
+@auth0_login_required
+def manage_user(request, user_id):
+    user_profile = get_object_or_404(UserProfile, user__id=user_id)
+    organization = user_profile.organization
+
+    if organization.owner != request.user:
+        messages.error(request, "You don't have permission to delete this user.")
+        return HttpResponseRedirect(reverse('dashboard'))
+
+    if request.method == 'POST':
+        user_profile.user.delete()
+        messages.success(request, 'User deleted successfully.')
+        return HttpResponseRedirect(reverse('dashboard'))
+
+    return render(request, 'manage-user.html', {'user_profile': user_profile})
+
+@auth0_login_required
+def invite_user(request):
+    if request.method == 'POST':
+        email = request.POST['email']
+        # You'll need to implement the function to send an invitation via Auth0
+        send_invitation(request.user, email)
+        messages.success(request, 'Invitation sent successfully.')
+        return redirect('dashboard')
+
+    return render(request, 'invite_user.html')
+
+@auth0_login_required
+def manage_agent(request, agent_id=None):
+    if agent_id:
+        agent = get_object_or_404(Agent, id=agent_id)
+        form = CreateAgentForm(instance=agent)
+    else:
+        agent = None
+        form = CreateAgentForm()
+
+    if request.method == 'POST':
+        if 'delete' in request.POST:
+            agent.delete()
+            messages.success(request, 'Agent deleted successfully.')
+            return redirect('dashboard')
+        else:
+            if agent:
+                form = CreateAgentForm(request.POST, instance=agent)
+            else:
+                form = CreateAgentForm(request.POST)
+
+            if form.is_valid():
+                agent = form.save(commit=False)
+                user_profile = UserProfile.objects.get(user=request.user)
+                agent.organization = user_profile.organization
+
+                # Generate the unique, immutable namespace
+                namespace = f"{user_profile.organization.slug}-{slugify(agent.name)}-{uuid.uuid4().hex[:5]}"
+                agent.namespace = namespace
+
+                agent.save()
+
+                messages.success(request, 'Agent updated successfully.')
+                return redirect('dashboard')
+
+    context = {'form': form, 'agent': agent}
+    return render(request, 'manage-agent.html', context)
+
+# Helper functions for sending invitations
+def send_invitation(current_user, email):
+    # Get access token
+    token_url = f'https://YOUR_AUTH0_DOMAIN/oauth/token'
+    token_payload = {
+        'client_id': 'YOUR_CLIENT_ID',
+        'client_secret': 'YOUR_CLIENT_SECRET',
+        'audience': f'https://YOUR_AUTH0_DOMAIN/api/v2/',
+        'grant_type': 'client_credentials'
+    }
+    token_response = requests.post(token_url, data=token_payload)
+    access_token = token_response.json()['access_token']
+
+    # Create passwordless email invitation
+    invite_url = f'https://YOUR_AUTH0_DOMAIN/api/v2/tickets/passwordless/start'
+    headers = {'Authorization': f'Bearer {access_token}'}
+    user_profile = UserProfile.objects.get(user=current_user)
+    organization_id = user_profile.organization.id
+
+    invite_payload = {
+        'client_id': 'YOUR_CLIENT_ID',
+        'email': email,
+        'send': 'code',
+        'authParams': {
+            'scope': 'openid',
+            'organization_id': organization_id
+        }
+    }
+    invite_response = requests.post(invite_url, headers=headers, json=invite_payload)
+
+    return invite_response
