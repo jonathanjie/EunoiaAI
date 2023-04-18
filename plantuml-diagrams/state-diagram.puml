@@ -1,0 +1,32 @@
+@startuml
+[*] --> Main_Page
+Main_Page --> Auth0_Login : Login
+Auth0_Login --> Dashboard : Access Dashboard
+
+state Dashboard {
+  [*] --> Users
+  Users --> Invite_User : Invite User
+  Users --> Manage_User : Manage User
+  Users --> Agents : View Agents
+
+  Agents --> Create_Agent : Create New Agent
+  Agents --> Manage_Agent : Manage Existing Agent
+  Manage_Agent --> Chat_Page : Chat with Agent
+  Manage_Agent --> Delete_Agent : Delete Agent
+
+  Chat_Page --> Upload_Page : Upload Knowledge Base
+  Upload_Page --> Chat_Page : Back to chat
+}
+
+Invite_User --> Users : Done
+Manage_User --> Users : Done
+Delete_User --> Users : Done
+
+Create_Agent --> Agents : Done
+Manage_Agent --> Agents : Done
+Delete_Agent --> Agents : Done
+
+Chat_Page --> Agents : Done
+Dashboard --> Auth0_Logout : Logout
+Auth0_Logout --> [*]
+@enduml

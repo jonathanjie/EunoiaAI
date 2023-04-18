@@ -22,7 +22,7 @@
     <h3>Agents</h3>
     <ul>
     {% for agent in agents %}
-        <li><a href="{% url 'update_agent' agent.id %}">{{ agent.name }}</a></li>
+        <li><a href="{% url 'manage_agent' agent.namespace %}">{{ agent.name }}</a></li>
     {% endfor %}
     </ul>
 

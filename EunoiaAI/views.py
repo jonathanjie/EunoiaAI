@@ -18,6 +18,7 @@ import tempfile
 from urllib.parse import quote_plus, urlencode
 from authlib.integrations.django_client import OAuth
 import uuid
+import pinecone
 
 # Local imports
 from .config import expiry_time, docsearch, init_chat_and_memory
@@ -26,7 +27,6 @@ from .forms import CreateOrganizationForm, CreateAgentForm
 from .models import Agent, UserProfile
 from .process_and_upload import process_and_upload
 from .utils import save_convo_to_redis, restore_convo_from_redis
-
 
 # Constants
 UPLOAD_FOLDER = 'uploads'
@@ -53,44 +53,41 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # Chat Views
-def chat_page(request):
-    return render(request, 'chat-page.html')
+def chat_page(request, agent_namespace):
+    agent = get_object_or_404(Agent, namespace=agent_namespace)
+    return render(request, 'chat-page.html', {'agent': agent})
 
 def upload_page(request):
     return render(request, 'upload-page.html')
 
 @csrf_exempt
-def chat(request):
+def send_message(request):
     if request.method == 'POST':
         data = json.loads(request.body.decode("utf-8"))
 
-        if 'user_input' not in data or 'session_id' not in data:
-            return JsonResponse({'error': 'user_input and session_id are required'}, status=400)
+        user_input = data.get('user_input')
+        session_id = data.get('session_id')
+        agent_namespace = data.get('agent_namespace')
 
-        user_input = data['user_input']
-        session_id = data['session_id']
-        pinecone_api_key = data["pinecone_api_key"]
-        pinecone_env = data["pinecone_env"]
-        pinecone_index_name = data["pinecone_index_name"]
+        if user_input and session_id and agent_namespace:
+            agent = get_object_or_404(Agent, namespace=agent_namespace)
 
-        query_reply = docsearch.similarity_search(
-            user_input, include_metadata=True)
-        data_1 = query_reply[0].page_content
-        data_2 = query_reply[1].page_content
-        data_3 = query_reply[2].page_content
+            # Initialize conversation and memory for the specific session
+            conversation, memory = init_chat_and_memory(agent)
 
-        conversation, memory = init_chat_and_memory(
-            context_data=(data_1, data_2, data_3))
+            # Restore conversation from Redis
+            restore_convo_from_redis(request, memory, agent_namespace)
 
-        restore_convo_from_redis(request, memory, session_id)  # Updated
+            response = conversation.predict(input=user_input)
 
-        response = conversation.predict(input=user_input)
+            # Save the conversation to Redis
+            save_convo_to_redis(request, memory, agent_namespace)
 
-        save_convo_to_redis(request, memory, session_id)  # Updated
-
-        return JsonResponse({'response': response})
+            return JsonResponse({"response": response})
+        else:
+            return JsonResponse({"error": "user_input, session_id, or agent_namespace not provided."}, status=400)
     else:
-        return JsonResponse({'error': 'Invalid request method'}, status=405)
+        return JsonResponse({"error": "Invalid request method."}, status=405)
 
 @csrf_exempt
 def upload_file(request):
@@ -135,7 +132,6 @@ def upload_file(request):
         return JsonResponse({'error': 'Invalid request method'}, status=405)
 
 # Auth0 Views
-
 def index(request):
     return render(
         request,
@@ -267,9 +263,9 @@ def invite_user(request):
     return render(request, 'invite_user.html')
 
 @auth0_login_required
-def manage_agent(request, agent_id=None):
-    if agent_id:
-        agent = get_object_or_404(Agent, id=agent_id)
+def manage_agent(request, agent_namespace=None):
+    if agent_namespace:
+        agent = get_object_or_404(Agent, namespace=agent_namespace)
         form = CreateAgentForm(instance=agent)
     else:
         agent = None
@@ -291,9 +287,10 @@ def manage_agent(request, agent_id=None):
                 user_profile = UserProfile.objects.get(user=request.user)
                 agent.organization = user_profile.organization
 
-                # Generate the unique, immutable namespace
-                namespace = f"{user_profile.organization.slug}-{slugify(agent.name)}-{uuid.uuid4().hex[:5]}"
-                agent.namespace = namespace
+                if not agent.namespace:
+                    # Generate the unique, immutable namespace only if it doesn't exist
+                    namespace = f"{user_profile.organization.slug}-{slugify(agent.name)}-{uuid.uuid4().hex[:5]}"
+                    agent.namespace = namespace
 
                 agent.save()
 

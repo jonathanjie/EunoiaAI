@@ -1,39 +1,16 @@
 /*global fetch*/
 /*global localStorage*/
-const pineconeApiKeyInput = document.getElementById("pinecone_api_key");
-const pineconeEnvInput = document.getElementById("pinecone_env");
-const pineconeIndexNameInput = document.getElementById("pinecone_index_name");
-
-if (pineconeApiKeyInput && pineconeEnvInput && pineconeIndexNameInput) {
-  pineconeApiKeyInput.value = localStorage.getItem("pinecone_api_key") || '059d7f02-0a2b-426d-bd4d-dac65525637d';
-  pineconeEnvInput.value = localStorage.getItem("pinecone_env") || 'us-east4-gcp';
-  pineconeIndexNameInput.value = localStorage.getItem("pinecone_index") || 'mrn-chatbot';
-
-  // Add these lines to the end of the file
-  pineconeApiKeyInput.addEventListener("input", () => {
-    localStorage.setItem("pinecone_api_key", pineconeApiKeyInput.value);
-  });
-
-  pineconeEnvInput.addEventListener("input", () => {
-    localStorage.setItem("pinecone_env", pineconeEnvInput.value);
-  });
-
-  pineconeIndexNameInput.addEventListener("input", () => {
-    localStorage.setItem("pinecone_index", pineconeIndexNameInput.value);
-  });
-}
 
 const messagesDiv = document.getElementById("messages");
 const userInput = document.getElementById("user-input");
 const sendBtn = document.getElementById("send-btn");
-const typingDiv = document.getElementById('typing');
+const typingDiv = document.getElementById("typing");
 
 // Fetch and set a UUID as the session ID
 let sessionId;
 (async () => {
     sessionId = await fetchUUID();
 })();
-
 
 sendBtn.addEventListener("click", async () => {
   const userText = userInput.value;
@@ -47,12 +24,8 @@ sendBtn.addEventListener("click", async () => {
   // Show the typing animation
   document.getElementById("typing").classList.remove("hidden");
 
-  const pineconeApiKey = document.getElementById("pinecone_api_key").value;
-  const pineconeEnv = document.getElementById("pinecone_env").value;
-  const pineconeIndexName = document.getElementById("pinecone_index_name").value;
-
   try {
-    const response = await fetch("http://194.233.91.95:8000/chat/", {
+    const response = await fetch(`${window.location.pathname}send-message/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -60,9 +33,6 @@ sendBtn.addEventListener("click", async () => {
       body: JSON.stringify({
         user_input: userText,
         session_id: sessionId,
-        pinecone_api_key: pineconeApiKey,
-        pinecone_env: pineconeEnv,
-        pinecone_index_name: pineconeIndexName,
       }),
     });
 
@@ -176,3 +146,4 @@ function submitForm(event) {
             spinnerElement.classList.add('hidden');
         });
 }
+

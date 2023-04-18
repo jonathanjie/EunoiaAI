@@ -7,6 +7,10 @@
     {{ form.as_p }}
     <button type="submit">{% if agent %}Update{% else %}Create{% endif %} Agent</button>
     {% if agent %}
+      <br><br>
+      <a href="{% url 'chat_page' agent.namespace %}">Chat with Agent</a>
+    {% endif %}
+    {% if agent %}
       <button type="submit" name="delete">Delete Agent</button>
     {% endif %}
   </form>
