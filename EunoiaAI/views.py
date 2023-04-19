@@ -19,18 +19,23 @@ from urllib.parse import quote_plus, urlencode
 from authlib.integrations.django_client import OAuth
 import uuid
 import pinecone
+from langchain.vectorstores import Pinecone
+from langchain.embeddings.openai import OpenAIEmbeddings
 
 # Local imports
-from .config import expiry_time, docsearch, init_chat_and_memory
 from .decorators import auth0_login_required
 from .forms import CreateOrganizationForm, CreateAgentForm
 from .models import Agent, UserProfile
 from .process_and_upload import process_and_upload
-from .utils import save_convo_to_redis, restore_convo_from_redis
+from .utils import expiry_time, init_chat_and_memory, save_convo_to_redis, restore_convo_from_redis
 
 # Constants
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'pdf', 'csv', 'zip', 'html', 'txt'}
+
+# Initialize Pinecone and the embedding function
+pinecone.init(api_key=settings.PINECONE_API_KEY, environment=settings.PINECONE_API_ENV)
+embedding = OpenAIEmbeddings(openai_api_key=settings.OPENAI_API_KEY)
 
 # OAuth configuration
 oauth = OAuth()
@@ -57,23 +62,33 @@ def chat_page(request, agent_namespace):
     agent = get_object_or_404(Agent, namespace=agent_namespace)
     return render(request, 'chat-page.html', {'agent': agent})
 
-def upload_page(request):
-    return render(request, 'upload-page.html')
+def upload_page(request, agent_namespace):
+    agent = get_object_or_404(Agent, namespace=agent_namespace)
+    return render(request, 'upload-page.html', {'agent': agent})
 
 @csrf_exempt
-def send_message(request):
+def send_message(request, agent_namespace):
     if request.method == 'POST':
         data = json.loads(request.body.decode("utf-8"))
 
         user_input = data.get('user_input')
         session_id = data.get('session_id')
-        agent_namespace = data.get('agent_namespace')
 
-        if user_input and session_id and agent_namespace:
+        if user_input and session_id:
             agent = get_object_or_404(Agent, namespace=agent_namespace)
 
+            # Initialize Pinecone with the given namespace
+            docsearch = Pinecone.from_existing_index(embedding=embedding, index_name=settings.PINECONE_INDEX)
+
+            # Retrieve relevant data from vector store
+            query_reply = docsearch.similarity_search(user_input, namespace=agent_namespace, include_metadata=True)
+            # query_reply = docsearch.similarity_search(user_input, include_metadata=True)
+            data_1 = query_reply[0].page_content
+            data_2 = query_reply[1].page_content
+            data_3 = query_reply[2].page_content
+
             # Initialize conversation and memory for the specific session
-            conversation, memory = init_chat_and_memory(agent)
+            conversation, memory = init_chat_and_memory((data_1, data_2, data_3))
 
             # Restore conversation from Redis
             restore_convo_from_redis(request, memory, agent_namespace)
@@ -85,19 +100,20 @@ def send_message(request):
 
             return JsonResponse({"response": response})
         else:
-            return JsonResponse({"error": "user_input, session_id, or agent_namespace not provided."}, status=400)
+            return JsonResponse({"error": "user_input or session_id not provided."}, status=400)
     else:
         return JsonResponse({"error": "Invalid request method."}, status=405)
 
+
 @csrf_exempt
-def upload_file(request):
+def upload_file(request, agent_namespace):
     if request.method == 'POST':
         file_type = request.POST.get("file_type")
-        pinecone_api_key = request.POST.get("pinecone_api_key")
-        pinecone_env = request.POST.get("pinecone_env")
-        pinecone_index_name = request.POST.get("pinecone_index_name")
+        pinecone_api_key = settings.PINECONE_API_KEY
+        pinecone_env = settings.PINECONE_API_ENV
+        pinecone_index = settings.PINECONE_INDEX
 
-        if not all([file_type, pinecone_api_key, pinecone_env, pinecone_index_name]):
+        if not all([file_type]):
             return JsonResponse({"error": "Missing required inputs"}, status=400)
 
         if file_type in ["javascript_website"]:
@@ -120,12 +136,13 @@ def upload_file(request):
 
                     input_data = file_path
                     documents = process_and_upload(
-                        input_data, file_type, pinecone_api_key, pinecone_env, pinecone_index_name
+                        input_data, file_type, pinecone_api_key, pinecone_env, pinecone_index, agent_namespace
                     )
 
         if file_type in ["javascript_website", "html_website"]:
             documents = process_and_upload(
-                input_data, file_type, pinecone_api_key, pinecone_env, pinecone_index_name        )
+                input_data, file_type, pinecone_api_key, pinecone_env, pinecone_index, agent_namespace
+            )
 
         return JsonResponse({"success": "Documents processed and uploaded"}, status=200)
     else:

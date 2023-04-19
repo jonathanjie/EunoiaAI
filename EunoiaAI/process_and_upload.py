@@ -21,7 +21,7 @@ from django.conf import settings
 
 
 def process_and_upload(
-    input_data, file_type, pinecone_api_key, pinecone_api_env, pinecone_index_name
+    input_data, file_type, pinecone_api_key, pinecone_api_env, pinecone_index, agent_namespace
 ):
     # Choose the appropriate loader based on the file type
     if file_type == "notion":
@@ -64,7 +64,7 @@ def process_and_upload(
 
     # Initialize Pinecone client and index
     pinecone.init(api_key=pinecone_api_key, environment=pinecone_api_env)
-    index = pinecone.Index(index_name=pinecone_index_name)
+    index = pinecone.Index(index_name=pinecone_index)
 
     # Select OpenAI's Embeddings API as the embedding function
     embedding = OpenAIEmbeddings(openai_api_key=settings.OPENAI_API_KEY)
@@ -72,5 +72,5 @@ def process_and_upload(
     # Insert the chunked documents into the Pinecone DB.
     # This uses Langchain's library to embed and insert
     docsearch = Pinecone.from_documents(
-        docs, embedding=embedding, index_name=pinecone_index_name
+        docs, embedding=embedding, index_name=pinecone_index, namespace=agent_namespace
     )

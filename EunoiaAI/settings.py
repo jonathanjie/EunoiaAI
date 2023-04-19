@@ -123,6 +123,7 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 PINECONE_API_KEY = os.getenv('PINECONE_API_KEY')
 PINECONE_API_ENV = os.getenv('PINECONE_API_ENV')
+PINECONE_INDEX = os.getenv('PINECONE_INDEX')
 PROMPTLAYER_API_KEY = os.getenv('PROMPTLAYER_API_KEY')
 REDIS_URL = os.getenv('REDIS_URL')
 UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER')
@@ -167,3 +168,26 @@ AUTH0_CLIENT_SECRET = os.environ.get("AUTH0_CLIENT_SECRET")
 
 
 LOGIN_REDIRECT_URL = 'chat-page'
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'level': 'DEBUG',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'myapp': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}

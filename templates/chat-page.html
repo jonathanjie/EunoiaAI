@@ -22,6 +22,7 @@
             <button id="send-btn">Send</button>
         </div>
     </div>
-    <a href="/upload-page">Upload Knowledge Base</a>
+    <a href="{% url 'upload_page' agent.namespace %}">Upload into Knowledge Base</a>
+    <a href="{% url 'manage_agent' agent.namespace%}">Back to Agent Page</a>
 </body>
 </html>

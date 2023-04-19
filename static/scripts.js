@@ -13,42 +13,41 @@ let sessionId;
 })();
 
 sendBtn.addEventListener("click", async () => {
-  const userText = userInput.value;
-  userInput.value = "";
-
-  if (!userText.trim()) return; // Ignore empty messages
-
-  addMessage(userText, false); // Display user's message
-  disableInput(true); // Disable input while waiting for AI's response
-
-  // Show the typing animation
-  document.getElementById("typing").classList.remove("hidden");
-
-  try {
-    const response = await fetch(`${window.location.pathname}send-message/`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        user_input: userText,
-        session_id: sessionId,
-      }),
-    });
-
-    const jsonResponse = await response.json();
-
-    // Hide the typing animation
-    document.getElementById("typing").classList.add("hidden");
-
-    addMessage(jsonResponse.response, true); // Display chatbot's response
-  } catch (error) {
-    console.error("Error:", error);
-  } finally {
-    disableInput(false); // Enable input after AI's response
-  }
-});
-
+    const userText = userInput.value;
+    userInput.value = "";
+  
+    if (!userText.trim()) return; // Ignore empty messages
+  
+    addMessage(userText, false); // Display user's message
+    disableInput(true); // Disable input while waiting for AI's response
+  
+    // Show the typing animation
+    document.getElementById("typing").classList.remove("hidden");
+  
+    try {
+      const response = await fetch(`${window.location.pathname}send-message/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_input: userText,
+          session_id: sessionId
+        }),
+      });
+  
+      const jsonResponse = await response.json();
+  
+      // Hide the typing animation
+      document.getElementById("typing").classList.add("hidden");
+  
+      addMessage(jsonResponse.response, true); // Display chatbot's response
+    } catch (error) {
+      console.error("Error:", error);
+    } finally {
+      disableInput(false); // Enable input after AI's response
+    }
+  });
 
 function disableInput(disabled) {
     userInput.disabled = disabled;

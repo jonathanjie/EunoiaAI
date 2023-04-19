@@ -5,24 +5,9 @@ import pinecone
 from langchain.chains import ConversationChain
 from langchain.memory import ConversationSummaryBufferMemory
 from langchain.chat_models import PromptLayerChatOpenAI
-from langchain.vectorstores import Pinecone
-from langchain.embeddings.openai import OpenAIEmbeddings
 from django.conf import settings
 
-# # Set API Keys
-# os.environ['OPENAI_API_KEY'] = settings.OPENAI_API_KEY
-# os.environ["PROMPTLAYER_API_KEY"] = settings.PROMPTLAYER_API_KEY
-
 expiry_time = timedelta(seconds=86400)  # 24 hours
-
-# Initialize Pinecone, its index, and the embedding function
-pinecone.init(api_key=settings.PINECONE_API_KEY, environment=settings.PINECONE_API_ENV)
-index_name = "mrn-chatbot"
-index = pinecone.Index(index_name=index_name)
-embedding = OpenAIEmbeddings(openai_api_key=settings.OPENAI_API_KEY)
-docsearch = Pinecone.from_existing_index(embedding=embedding,
-                                         index_name=index_name)
-
 
 def init_chat_and_memory(context_data):
     data_1, data_2, data_3 = context_data
