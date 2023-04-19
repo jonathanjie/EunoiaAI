@@ -1,0 +1,11 @@
+1. Delete Agent > Delete that namespace from pinecone (The API of delete supports deleting a whole namespace. It is done by using delete_all flag.
+e.g. calling index.delete(delete_all=True, namespace="example") will delete all vectors inside “example” namespace and only them.)
+
+2. Add description field for agents
+
+3. Reload prior conversation history into chatbox if same session
+
+4. Expose APIs for individual agents
+  > The payload would require API Key and Secrets (based on organization), as well as the agent_namespace
+
+5. Combine process_and_upload.py into utils.py
