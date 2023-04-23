@@ -53,6 +53,8 @@ def process_and_upload(
         loader = PyPDFLoader(input_data)
     else:
         raise ValueError(f"Unsupported file type: {file_type}")
+    
+    print("FILE TYPE: " + file_type)
 
     documents = loader.load()
     print("DOCUMENTS:")

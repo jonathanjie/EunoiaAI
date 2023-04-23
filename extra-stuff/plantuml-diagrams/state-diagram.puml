@@ -1,0 +1,52 @@
+@startuml
+[*] --> NotLoggedIn
+
+state NotLoggedIn {
+  [*] --> IndexPage
+  IndexPage -down-> Login : Login
+  IndexPage -down-> Signup : Signup
+  Login --> LoggedIn : Successful Login
+  Signup --> LoggedIn : Successful Signup
+}
+
+state LoggedIn {
+  [*] --> Dashboard
+
+  state Dashboard {
+    [*] --> DisplayDashboard
+    DisplayDashboard --> ManageUsers : Manage Users
+    DisplayDashboard --> ManageAgents : Manage Agents
+    DisplayDashboard --> ManageOrganization : Manage Organization
+    DisplayDashboard --> ManageAPIKeys : Manage API Keys
+  }
+
+  state ManageUsers {
+    [*] --> UserList
+    UserList --> DeleteUser : Delete User
+    UserList --> InviteUser : Invite User
+    UserList --> Dashboard : Back to Dashboard
+  }
+
+  state ManageAgents {
+    [*] --> AgentList
+    AgentList --> CreateUpdateDeleteAgent : Create/Update/Delete Agent
+    AgentList --> ChatWithAgent : Chat with Agent
+    AgentList --> UploadFilesForAgent : Upload Files for Agent
+    AgentList --> Dashboard : Back to Dashboard
+  }
+
+  state ManageOrganization {
+    [*] --> OrganizationDetails
+    OrganizationDetails --> CreateUpdateOrganization : Create/Update Organization
+    OrganizationDetails --> Dashboard : Back to Dashboard
+  }
+
+  state ManageAPIKeys {
+    [*] --> APIKeyList
+    APIKeyList --> CreateDeleteAPIKey : Create/Delete API Key
+    APIKeyList --> Dashboard : Back to Dashboard
+  }
+
+  Dashboard --> [*] : Logout
+}
+@enduml

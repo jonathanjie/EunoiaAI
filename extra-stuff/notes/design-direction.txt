@@ -1,0 +1,19 @@
+User Flow:
+Login or signup: The user starts on the index page, where they can log in or sign up if they are not logged in.
+Dashboard: Once logged in, the user is redirected to the dashboard page. The dashboard shows a list of agents, a list of users (if the current user is the owner), and options to manage API keys, create new agents, and invite users.
+Agent management: The user can click on an agent from the dashboard to manage it. They can also create a new agent from the dashboard. This will take them to the manage-agent page, where they can create or update an agent.
+Chat page: From the manage-agent page, the user can navigate to the chat page to chat with the agent.
+Upload page: From the manage-agent page, the user can navigate to the upload page to upload files for the agent.
+User management: If the current user is the owner, they can click on a user from the dashboard to manage the user. This will take them to the manage-user page, where they can delete the user.
+Organization management: The user can manage their organization from the dashboard by navigating to the manage-organization page.
+API key management: From the dashboard, the user can manage their API keys by navigating to the manage-keys page.
+
+Design:
+Index page (Login/Signup): Keep the design simple with a clean background, a centered login/signup form, and a logo at the top.
+Dashboard: Use a simple layout with a sidebar for navigation and a main content area for displaying the lists of agents and users. Use cards or a table to display the lists.
+Manage-agent page: Display a form with fields for the agent's name, description, and namespace. Include buttons to create/update the agent, chat with the agent, and delete the agent.
+Chat page: Use a chat UI with speech bubbles for messages. Display user messages on the left side and agent messages on the right side. Include a text input and a send button at the bottom.
+Upload page: Show a file input and an upload button, along with a list of previously uploaded files.
+Manage-user page: Display the user's information and a delete button to remove the user.
+Manage-organization page: Show a form with fields for the organization's name and slug. Include a button to create/update the organization.
+Manage-keys page: Display a table with the list of API keys, along with a button to create a new key and delete buttons for each key.

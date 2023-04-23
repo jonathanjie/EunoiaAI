@@ -6,11 +6,41 @@ const userInput = document.getElementById("user-input");
 const sendBtn = document.getElementById("send-btn");
 const typingDiv = document.getElementById("typing");
 
+const expirationTime = new Date().getTime() + (10 * 24 * 60 * 60 * 1000);
+
 // Fetch and set a UUID as the session ID
 let sessionId;
-(async () => {
-    sessionId = await fetchUUID();
-})();
+async function initSession() {
+    if (!localStorage.getItem('sessionId')) {
+        sessionId = await fetchUUID();
+        console.log(`NEW SESSION ID: ${sessionId}`);
+        localStorage.setItem('sessionId', sessionId);
+        localStorage.setItem('expirationTime', expirationTime);
+    } else {
+        sessionId = localStorage.getItem('sessionId');
+        console.log(`EXISTING SESSION ID: ${sessionId}`);
+    }
+
+    const agentNamespace = document.getElementById('agent_namespace').value;
+
+    const response = await fetch(`/agent/${agentNamespace}/chat/${sessionId}/get_conversation_history/`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    });
+
+    if (response.ok) {
+        const data = await response.json();
+        const conversationHistory = data.conversation_history;
+        loadConversationHistory(conversationHistory);
+    } else {
+        console.error('Error fetching conversation history:', response.statusText);
+    }
+}
+
+// Call initSession when the page is loaded for the first time
+initSession();
 
 sendBtn.addEventListener("click", async () => {
     const userText = userInput.value;
@@ -146,3 +176,26 @@ function submitForm(event) {
         });
 }
 
+function loadConversationHistory(conversationHistory) {
+    conversationHistory.forEach((message, index) => {
+        addMessage(message, index % 2 !== 0);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const conversationHistoryInput = document.getElementById('conversation_history');
+    const conversationHistory = JSON.parse(conversationHistoryInput.dataset.conversationHistory);
+  
+    loadConversationHistory(conversationHistory);
+  });
+
+document.getElementById('reset-session-btn').addEventListener('click', async () => {
+    const newSessionId = await fetchUUID();
+    console.log(`NEW SESSION ID: ${newSessionId}`);
+    localStorage.setItem('sessionId', newSessionId);
+    localStorage.setItem('expirationTime', expirationTime);
+    sessionId = newSessionId;
+
+    // Clear messages
+    messagesDiv.innerHTML = "";
+});

@@ -1,6 +1,6 @@
+from uuid import uuid4
 from django.db import models
 from django.contrib.auth.models import User
-from uuid import uuid4
 
 class Organization(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
@@ -26,10 +26,25 @@ class UserProfile(models.Model):
 class Agent(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     name = models.CharField(max_length=255)
-    namespace = models.CharField(max_length=255, unique=True)
+    description = models.TextField(blank=True, null=True)
+    namespace = models.CharField(max_length=50, unique=True, editable=False)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    primer_prompt = models.TextField(blank=True, null=True)
+    company_name = models.CharField(max_length=255, blank=True, null=True)
+    agent_display_name = models.CharField(max_length=255, blank=True, null=True)
+
+    def __str__(self):
+        return self.name
+    
+class APIKey(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    key = models.CharField(max_length=100, unique=True)
+    status = models.CharField(max_length=10, default="active")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.name
+        return self.key

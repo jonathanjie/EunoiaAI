@@ -14,6 +14,7 @@
         <img src="https://cdn.discordapp.com/attachments/807707281961123883/1095056498058600519/logo_navy.png" alt="Logo" class="logo" />
     </div>
     <input type="hidden" id="agent_namespace" value="{{ agent.namespace }}">
+    <input type="hidden" id="conversation_history" data-conversation-history="{{ conversation_history|safe }}">
     <div class="chat-container">
         <div class="messages" id="messages"></div>
         <div id="typing" class="typing hidden">Mari-Chan is typing...</div>
@@ -22,6 +23,7 @@
             <button id="send-btn">Send</button>
         </div>
     </div>
+    <button id="reset-session-btn">Reset Session</button>
     <a href="{% url 'upload_page' agent.namespace %}">Upload into Knowledge Base</a>
     <a href="{% url 'manage_agent' agent.namespace%}">Back to Agent Page</a>
 </body>

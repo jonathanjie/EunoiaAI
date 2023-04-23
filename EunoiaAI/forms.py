@@ -9,4 +9,4 @@ class CreateOrganizationForm(forms.ModelForm):
 class CreateAgentForm(forms.ModelForm):
     class Meta:
         model = Agent
-        fields = ['name']
+        fields = ['name', 'description']

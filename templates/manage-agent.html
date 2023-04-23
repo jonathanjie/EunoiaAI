@@ -5,6 +5,15 @@
   <form method="post">
     {% csrf_token %}
     {{ form.as_p }}
+    <label for="agent_display_name">Agent Display Name:</label>
+    <input type="text" name="agent_display_name" id="agent_display_name" value="{{ agent.agent_display_name|default:'' }}" placeholder="Agent Name (optional)">
+    <br>
+    <label for="company_name">Company Name:</label>
+    <input type="text" name="company_name" id="company_name" value="{{ agent.company_name|default:'' }}" placeholder="Company Name (optional)">
+    <br>
+    <label for="primer_prompt">Primer Prompt:</label>
+    <textarea name="primer_prompt" id="primer_prompt" rows="4" placeholder="Primer Prompt (optional)">{{ agent.primer_prompt|default:'' }}</textarea>
+    <br>
     <button type="submit">{% if agent %}Update{% else %}Create{% endif %} Agent</button>
     {% if agent %}
       <br><br>
