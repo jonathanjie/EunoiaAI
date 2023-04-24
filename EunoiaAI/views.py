@@ -569,6 +569,22 @@ def manage_user(request, user_id):
         return HttpResponseRedirect(reverse('dashboard'))
 
     if request.method == 'POST':
+        auth0_user_id = user_profile.user.username
+
+        # Delete user from Auth0
+        access_token = get_auth0_access_token()
+        auth0_delete_user_url = f"https://{settings.AUTH0_DOMAIN}/api/v2/users/{auth0_user_id}"
+        headers = {'Authorization': f'Bearer {access_token}'}
+        response = requests.delete(auth0_delete_user_url, headers=headers)
+
+        print("DELETION STATUS:")
+        print(response)
+
+        if response.status_code != 204:
+            messages.error(request, "Failed to delete user from Auth0.")
+            return HttpResponseRedirect(reverse('dashboard'))
+
+        # Delete user from Django
         user_profile.user.delete()
         messages.success(request, 'User deleted successfully.')
         return HttpResponseRedirect(reverse('dashboard'))
