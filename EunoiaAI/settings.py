@@ -127,6 +127,7 @@ PINECONE_INDEX = os.getenv('PINECONE_INDEX')
 PROMPTLAYER_API_KEY = os.getenv('PROMPTLAYER_API_KEY')
 REDIS_URL = os.getenv('REDIS_URL')
 UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER')
+API_BASE_URL = os.getenv('API_BASE_URL')
 
 # Configure session management using Redis
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"

@@ -1,8 +1,8 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block content %}
-    <h2>Dashboard</h2>
-
+<h2>Dashboard</h2>
     {% if is_owner %}
         <h3>Users</h3>
         <ul>
@@ -12,11 +12,25 @@
         </ul>
 
         <h3>Invite User</h3>
-        <form method="post" action="{% url 'invite_user' %}">
+        <form method="post" action="{% url 'dashboard' %}">
             {% csrf_token %}
             <input type="email" name="email" placeholder="Email" required>
             <button type="submit">Invite</button>
         </form>
+
+        {% for message in messages %}
+            <div class="message {{ message.tags }}">
+                <p>{{ message }}</p>
+            </div>
+        {% endfor %}
+
+        {% if invited_email and password_reset_url %}
+            <div class="invitation-details">
+                <h4>Invitation Details</h4>
+                <p>Email: {{ invited_email }}</p>
+                <p>Password Reset URL: <a href="{{ password_reset_url }}" target="_blank">{{ password_reset_url }}</a></p>
+            </div>
+        {% endif %}
     {% endif %}
 
     <h3>Agents</h3>
@@ -32,4 +46,8 @@
     <h3>Manage API Keys</h3>
     <a href="{% url 'manage_keys' %}">Manage Keys</a>
 
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'dashboard.js' %}"></script>
 {% endblock %}

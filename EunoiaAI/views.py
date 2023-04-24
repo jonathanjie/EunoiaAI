@@ -5,6 +5,8 @@ import tempfile
 import uuid
 import string
 import random
+import requests
+import http.client
 from urllib.parse import quote_plus, urlencode
 import pinecone
 from langchain.vectorstores import Pinecone
@@ -25,7 +27,7 @@ from django.conf import settings
 # Local imports
 from .decorators import auth0_login_required
 from .forms import CreateOrganizationForm, CreateAgentForm
-from .models import Agent, UserProfile, APIKey
+from .models import Agent, UserProfile, APIKey, Organization
 from .process_and_upload import process_and_upload
 from .utils import expiry_time, init_chat_and_memory, save_convo_to_redis, restore_convo_from_redis, get_convo_history_from_redis
 from .api_auth import APIAuth
@@ -145,7 +147,7 @@ def send_message(request, agent_namespace):
 
             # Initialize conversation and memory for the specific session
             conversation, memory = init_chat_and_memory(
-                (data_1, data_2, data_3), agent.primer_prompt, agent.company_name, agent.agent_name)
+                (data_1, data_2, data_3), agent.primer_prompt, agent.company_name, agent.agent_display_name)
 
             # Restore conversation from Redis
             restore_convo_from_redis(
@@ -411,7 +413,6 @@ def index(request):
         },
     )
 
-
 @auth0_login_required
 def dashboard(request):
     """
@@ -431,13 +432,20 @@ def dashboard(request):
 
     agents = Agent.objects.filter(organization=organization)
 
+    invited_email = None
+    password_reset_url = None
+    if request.method == 'POST' and is_owner:
+        email = request.POST['email']
+        invited_email, password_reset_url = send_invitation(request, email, organization.id)  # Pass the request object
+
     context = {
         'is_owner': is_owner,
         'user_profiles': user_profiles,
-        'agents': agents
+        'agents': agents,
+        'invited_email': invited_email,
+        'password_reset_url': password_reset_url,
     }
     return render(request, 'dashboard.html', context)
-
 
 def login(request):
     """
@@ -456,7 +464,7 @@ def callback(request):
     Handle the Auth0 callback after successful authentication.
 
     :param request: The request object.
-    :return: Redirect to the index view.
+    :return: Redirect to the dashboard view.
     """
     token = oauth.auth0.authorize_access_token(request)
     resp = oauth.auth0.get("userinfo", token=token)
@@ -470,7 +478,7 @@ def callback(request):
 
     auth_login(request, user)
 
-    return redirect(request.build_absolute_uri(reverse("index")))
+    return redirect(request.build_absolute_uri(reverse("dashboard")))
 
 
 def logout(request):
@@ -569,24 +577,6 @@ def manage_user(request, user_id):
 
 
 @auth0_login_required
-def invite_user(request):
-    """
-    Invite a new user to join the organization.
-
-    :param request: The request object.
-    :return: Rendered invite user page.
-    """
-    if request.method == 'POST':
-        email = request.POST['email']
-        # You'll need to implement the function to send an invitation via Auth0
-        send_invitation(request.user, email)
-        messages.success(request, 'Invitation sent successfully.')
-        return redirect('dashboard')
-
-    return render(request, 'invite_user.html')
-
-
-@auth0_login_required
 def manage_agent(request, agent_namespace=None):
     """
     Manage an agent using the specified namespace.
@@ -638,41 +628,84 @@ def manage_agent(request, agent_namespace=None):
 
 # Helper functions for sending invitations
 
+def get_auth0_access_token():
+    conn = http.client.HTTPSConnection(settings.AUTH0_DOMAIN)
 
-def send_invitation(current_user, email):
-    """
-    Send an email invitation to a user.
+    payload = f"grant_type=client_credentials&client_id={settings.AUTH0_CLIENT_ID}&client_secret={settings.AUTH0_CLIENT_SECRET}&audience=https://{settings.AUTH0_DOMAIN}/api/v2/"
 
-    :param current_user: The user object for the invite
-    :param email: the email to send to
-    """
-    # Get access token
-    token_url = f'https://YOUR_AUTH0_DOMAIN/oauth/token'
-    token_payload = {
-        'client_id': 'YOUR_CLIENT_ID',
-        'client_secret': 'YOUR_CLIENT_SECRET',
-        'audience': f'https://YOUR_AUTH0_DOMAIN/api/v2/',
-        'grant_type': 'client_credentials'
-    }
-    token_response = requests.post(token_url, data=token_payload)
-    access_token = token_response.json()['access_token']
+    headers = {'content-type': "application/x-www-form-urlencoded"}
 
-    # Create passwordless email invitation
-    invite_url = f'https://YOUR_AUTH0_DOMAIN/api/v2/tickets/passwordless/start'
+    conn.request("POST", "/oauth/token", payload, headers)
+
+    res = conn.getresponse()
+    data = res.read()
+
+    token_response = json.loads(data.decode("utf-8"))
+    print("TOKEN RESPONSE:")
+    print(token_response)
+    access_token = token_response['access_token']
+    return access_token
+
+def create_auth0_user(email, access_token, organization_id):
+    create_user_url = f'https://{settings.AUTH0_DOMAIN}/api/v2/users'
     headers = {'Authorization': f'Bearer {access_token}'}
-    user_profile = UserProfile.objects.get(user=current_user)
-    organization_id = user_profile.organization.id
 
-    invite_payload = {
-        'client_id': 'YOUR_CLIENT_ID',
+    # Generate a random password for the user
+    random_password = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
+
+    user_payload = {
         'email': email,
-        'send': 'code',
-        'authParams': {
-            'scope': 'openid',
-            'organization_id': organization_id
+        'password': random_password,
+        'connection': "Username-Password-Authentication",
+        'email_verified': False,
+        'app_metadata': {
+            'invitedToMyApp': True
         }
     }
-    invite_response = requests.post(
-        invite_url, headers=headers, json=invite_payload)
+    response = requests.post(create_user_url, headers=headers, json=user_payload)
+    auth0_user_data = response.json()
 
-    return invite_response
+    # Create a Django User instance
+    user = User.objects.create(username=auth0_user_data["user_id"], email=email)
+
+    # Associate the user with an organization
+    organization = Organization.objects.get(id=organization_id)
+    UserProfile.objects.create(user=user, organization=organization)
+
+    return response.json()
+
+def create_password_change_ticket(user_id, access_token):
+    result_url = settings.API_BASE_URL + '/accounts/login/'
+    ticket_url = f'https://{settings.AUTH0_DOMAIN}/api/v2/tickets/password-change'
+    headers = {'Authorization': f'Bearer {access_token}'}
+    ticket_payload = {
+        # 'result_url': result_url,
+        'user_id': user_id,
+        'client_id': settings.AUTH0_CLIENT_ID,
+        'ttl_sec': 86400,  # Adjust the duration as necessary
+        'mark_email_as_verified': False
+    }
+    print("TICKET PAYLOAD:")
+    print(ticket_payload)
+    response = requests.post(ticket_url, headers=headers, json=ticket_payload)
+    return response.json()
+
+def send_invitation(request, email, organization_id):
+    access_token = get_auth0_access_token()
+    user_data = create_auth0_user(email, access_token, organization_id)
+    print("USER DATA:")
+    print(user_data)
+
+    if user_data.get('statusCode') == 409:
+        messages.error(request, "The user already exists.")
+        return None, None
+
+    user_id = user_data['user_id']
+    ticket_data = create_password_change_ticket(user_id, access_token)
+
+    print("TICKET DATA:")
+    print(ticket_data)
+    ticket_url = ticket_data['ticket']
+    
+    # Return the email and ticket_url instead of sending an email
+    return email, ticket_url

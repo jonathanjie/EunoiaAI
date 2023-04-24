@@ -23,6 +23,5 @@ urlpatterns = [
     path('manage_keys/', views.manage_keys, name='manage_keys'),
     path('manage_keys/create_key/', views.create_key, name='create_key'),
     path('manage_keys/<str:key>/delete/', views.delete_key, name='delete_key'),
-    path('invite-user/', views.invite_user, name='invite_user'),
     path('dashboard/', views.dashboard, name='dashboard'),
 ]
