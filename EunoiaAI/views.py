@@ -680,6 +680,9 @@ def create_auth0_user(email, access_token, organization_id):
     }
     response = requests.post(create_user_url, headers=headers, json=user_payload)
     auth0_user_data = response.json()
+    
+    print("AUTH0 USER DATA:")
+    print(auth0_user_data)
 
     # Create a Django User instance
     user = User.objects.create(username=auth0_user_data["user_id"], email=email)
