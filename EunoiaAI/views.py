@@ -97,8 +97,7 @@ def get_conversation_history(request, agent_namespace, session_id):
         request, agent_namespace, session_id)
     return JsonResponse({'conversation_history': full_convo_history})
 
-
-@auth0_login_required
+# @auth0_login_required
 def upload_page(request, agent_namespace):
     """
     Render the upload page view.
@@ -110,6 +109,13 @@ def upload_page(request, agent_namespace):
     agent = get_object_or_404(Agent, namespace=agent_namespace)
     return render(request, 'upload-page.html', {'agent': agent})
 
+@csrf_exempt
+def get_agent_display_name(request, agent_namespace):
+    try:
+        agent = Agent.objects.get(namespace=agent_namespace)
+        return JsonResponse({"agent_display_name": agent.agent_display_name})
+    except Agent.DoesNotExist:
+        return JsonResponse({"error": "Agent not found"}, status=404)
 
 @csrf_exempt
 def send_message(request, agent_namespace):

@@ -40,7 +40,7 @@ AI:"""
     )
 
     # Initialize ChatGPT and Memoryindex
-    # chat = PromptLayerChatOpenAI(temperature=0, model_name="gpt-2")
+    chat = PromptLayerChatOpenAI(temperature=0, request_timeout=3600)
     memory = ConversationSummaryBufferMemory(llm=chat, max_token_limit=1000)
 
     # Initialize the Conversation object

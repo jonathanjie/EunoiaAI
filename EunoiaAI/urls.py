@@ -7,6 +7,7 @@ urlpatterns = [
     path("", views.index, name="index"),
     path('agent/create/', views.manage_agent, name='create_agent'),
     path('agent/<str:agent_namespace>/', views.manage_agent, name='manage_agent'),
+    path('agent/<str:agent_namespace>/get-display-name/', views.get_agent_display_name, name='get_agent_display_name'),
     path('agent/<str:agent_namespace>/chat/', views.chat_page, name='chat_page'),
     path('agent/<str:agent_namespace>/chat/<str:session_id>/get_conversation_history/', views.get_conversation_history, name='get_conversation_history'),
     path('agent/<str:agent_namespace>/chat/send-message/', views.send_message, name='send_message'),
