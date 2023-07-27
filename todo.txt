@@ -1,4 +1,0 @@
-1. Expose APIs for individual agents
-  > The payload would require API Key and Secrets (based on organization), as well as the agent_namespace
-
-2. Combine process_and_upload.py into utils.py
