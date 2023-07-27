@@ -25,6 +25,7 @@ class UserProfile(models.Model):
 
 class Agent(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    agentKey = models.CharField(max_length=255, blank=True, null=True)
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     namespace = models.CharField(max_length=50, unique=True, editable=False)

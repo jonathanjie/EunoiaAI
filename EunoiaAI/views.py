@@ -15,6 +15,7 @@ from authlib.integrations.django_client import OAuth
 
 # Django imports
 from django.http import JsonResponse, HttpResponseRedirect
+from django.views.decorators.http import require_http_methods
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.models import User
@@ -29,8 +30,9 @@ from .decorators import auth0_login_required
 from .forms import CreateOrganizationForm, CreateAgentForm
 from .models import Agent, UserProfile, APIKey, Organization
 from .process_and_upload import process_and_upload
-from .utils import expiry_time, init_chat_and_memory, save_convo_to_redis, restore_convo_from_redis, get_convo_history_from_redis
+from .utils import expiry_time, process_message, init_chat_and_memory, save_convo_to_redis, restore_convo_from_redis, get_convo_history_from_redis
 from .api_auth import APIAuth
+from .middleware.moobidesk import moobidesk_mo, moobidesk_mt
 
 # Constants
 UPLOAD_FOLDER = 'uploads'
@@ -143,8 +145,8 @@ def send_message(request, agent_namespace):
 
             # Retrieve relevant data from vector store
             query_reply = docsearch.similarity_search(
-                user_input, namespace=agent_namespace, include_metadata=True)
-            # query_reply = docsearch.similarity_search(user_input, include_metadata=True)
+                user_input, namespace=agent_namespace)
+            
             # Set data_1, data_2, and data_3 using list comprehension and min() function
             data_1, data_2, data_3 = [
                 q.page_content for q in query_reply[:3]] + [""] * (3 - len(query_reply))
@@ -283,67 +285,23 @@ def delete_key(request, key):
         return JsonResponse({"error": "Invalid request method."}, status=405)
 
 # External API Views
-
-
+@require_http_methods(["POST"])
 @csrf_exempt
 def api_send_message(request, agent_namespace):
-    """
-    Process a message and return a response using the specified agent namespace.
 
-    :param request: The request object.
-    :param agent_namespace: The namespace for the agent used in the conversation.
-    :return: JsonResponse with the response message or error message with the corresponding status code.
-    """
-    api_key = request.META.get("HTTP_API_KEY")
-
+    data = json.loads(request.body.decode("utf-8"))
+    user_input = data.get('user_input')
+    session_id = data.get('session_id')
+    api_key = data.get("api_key")
     if not api_key:
         return JsonResponse({"error": "API key not provided."}, status=401)
 
-    try:
-        organization = APIKey.objects.get(key=api_key).organization
-    except APIKey.DoesNotExist:
-        return JsonResponse({"error": "Invalid API key or secret."}, status=403)
+    response = process_message(request, api_key, user_input, session_id, agent_namespace)
+    if 'error' in response:
+        return JsonResponse(response, status=response['status'])
 
-    if request.method == 'POST':
-        data = json.loads(request.body.decode("utf-8"))
-
-        user_input = data.get('user_input')
-        session_id = data.get('session_id')
-
-        if user_input and session_id:
-            agent = get_object_or_404(Agent, namespace=agent_namespace)
-
-            # Initialize Pinecone with the given namespace
-            docsearch = Pinecone.from_existing_index(
-                embedding=embedding, index_name=settings.PINECONE_INDEX)
-
-            # Retrieve relevant data from vector store
-            query_reply = docsearch.similarity_search(
-                user_input, namespace=agent_namespace, include_metadata=True)
-            data_1, data_2, data_3 = [
-                q.page_content for q in query_reply[:3]] + [""] * (3 - len(query_reply))
-            data_2 = data_2 or data_1
-            data_3 = data_3 or data_2
-
-            # Initialize conversation and memory for the specific session
-            conversation, memory = init_chat_and_memory(
-                (data_1, data_2, data_3), agent.primer_prompt, agent.company_name, agent.agent_display_name)
-
-            # Restore conversation from Redis
-            restore_convo_from_redis(
-                request, memory, agent_namespace, session_id)
-
-            response = conversation.predict(input=user_input)
-
-            # Save the conversation to Redis
-            full_convo_history = save_convo_to_redis(
-                request, memory, agent_namespace, session_id)
-
-            return JsonResponse({"response": response, "full_convo_history": full_convo_history})
-        else:
-            return JsonResponse({"error": "user_input or session_id not provided."}, status=400)
-    else:
-        return JsonResponse({"error": "Invalid request method."}, status=405)
+    
+    return JsonResponse(response)
 
 
 @csrf_exempt
@@ -734,3 +692,63 @@ def send_invitation(request, email, organization_id):
     
     # Return the email and ticket_url instead of sending an email
     return email, ticket_url
+    
+# # MOOBIDESK MIDDLEWARE
+# @require_http_methods(["POST"])
+# @csrf_exempt
+# def moobidesk_mo(request):
+#     # Extract data from the MO payload
+#     data = json.loads(request.body.decode("utf-8"))
+#     print("MO FROM MOOBIDESK:")
+#     print(data)
+    
+#     user_input = data.get('message')
+#     session_id = data.get('conversationUUID')
+#     api_key = data.get('apiKey')  # Make sure this is the correct key
+
+#     # Get agent by botApiKey
+#     agent = get_object_or_404(Agent, agentKey=data.get('botApiKey'))
+
+#     response = process_message(request, data.get('botApiSecret'), user_input, session_id, agent.namespace)
+
+#     if 'error' in response:
+#         return JsonResponse(response, status=response['status'])
+
+#     # (The rest of your original 'moobidesk_mo' function code goes here...)
+
+#     # Extract the AI response
+#     ai_response = response.get('response')
+#     print("AI:", ai_response)
+
+#     # Create the 'to' field
+#     to_field = f"conversation:uuid:{session_id}/contact:Whatsapp:{data.get('sendTo')}"
+
+#     # Create the payload for the MT API
+#     mt_payload = {
+#         "apiSecret": data.get('apiSecret'),
+#         "agentUUID": data.get('agentUUID'),
+#         "channelAccountUUID" : data.get('channelAccountUUID'),
+#         "to": to_field,
+#         "message": ai_response,
+#         "refId": str(uuid.uuid4()),
+#     }
+
+#     # Send the MT payload to Moobidesk
+#     mt_response = moobidesk_mt(api_key, mt_payload)
+
+#     return JsonResponse({"status": "success"})
+    
+# def moobidesk_mt(moobidesk_api_key, mt_payload):
+
+#     url = f'https://e18.moobidesk.com/outgoing/v1/mt/{moobidesk_api_key}/{mt_payload["channelAccountUUID"]}'
+#     headers = {'Content-Type': 'application/json'}
+
+#     response = requests.post(url, headers=headers, data=json.dumps(mt_payload))
+    
+#     print("MT to MOOBIDESK:")
+#     print(mt_payload)
+    
+#     print("RESPONSE FROM MOOBIDESK:")
+#     print(response)
+
+#     return response.json()

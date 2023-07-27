@@ -7,7 +7,9 @@ from langchain.document_loaders import (
     SeleniumURLLoader,
     BSHTMLLoader,
     CSVLoader,
+    Docx2txtLoader,
 )
+# from langchain.document_loaders.recursive_url_loader import RecursiveUrlLoader
 from langchain.text_splitter import CharacterTextSplitter, TokenTextSplitter
 from langchain.vectorstores import Pinecone
 from langchain.embeddings.openai import OpenAIEmbeddings
@@ -34,11 +36,13 @@ def process_and_upload(
         loader = NotionDirectoryLoader(input_data)
     elif file_type == "csv":
         loader = CSVLoader(input_data)
+    elif file_type == "docx":
+        loader = Docx2txtLoader(input_data)
     elif file_type == "javascript_website":
         print("SCRAPING WEBSITE WITH SELENIUM")
         urls = [url.strip() for url in input_data.split(',')]
         loader = SeleniumURLLoader(urls=urls)
-    elif file_type == "html_website":
+    elif file_type == "html_webpage_single":
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'}
         response = requests.get(input_data, headers=headers)
@@ -61,7 +65,7 @@ def process_and_upload(
     print(documents)
 
     # Split docs into smaller chunks
-    text_splitter = TokenTextSplitter(chunk_size=500, chunk_overlap=0)
+    text_splitter = TokenTextSplitter(chunk_size=1000, chunk_overlap=100)
     docs = text_splitter.split_documents(documents)
 
     # Initialize Pinecone client and index

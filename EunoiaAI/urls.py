@@ -25,4 +25,5 @@ urlpatterns = [
     path('manage_keys/create_key/', views.create_key, name='create_key'),
     path('manage_keys/<str:key>/delete/', views.delete_key, name='delete_key'),
     path('dashboard/', views.dashboard, name='dashboard'),
+    path('moobidesk-mo', views.moobidesk_mo, name='moobidesk_mo'),
 ]
